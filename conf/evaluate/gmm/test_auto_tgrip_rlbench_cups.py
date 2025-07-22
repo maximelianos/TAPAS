@@ -38,7 +38,7 @@ policy_config = GMMPolicyConfig(
 
 
 config = Config(
-    env_config=rlbench_env_config,
+    env=rlbench_env_config,
     eval=eval,
     policy=policy_config,
     data_naming=data_naming_config,

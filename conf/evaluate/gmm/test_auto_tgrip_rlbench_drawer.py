@@ -27,6 +27,7 @@ encoder_naming_config = DataNamingConfig(
 policy_config = GMMPolicyConfig(
     suffix=None,
     model=auto_tpgmm_config,
+    force_overwrite_checkpoint_config=True,
     time_based=True,
     predict_dx_in_xdx_models=True,
     binary_gripper_action=True,
@@ -39,7 +40,7 @@ policy_config = GMMPolicyConfig(
 
 
 config = Config(
-    env_config=rlbench_env_config,
+    env=rlbench_env_config,
     eval=eval,
     policy=policy_config,
     data_naming=data_naming_config,

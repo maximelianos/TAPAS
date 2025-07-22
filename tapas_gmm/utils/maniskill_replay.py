@@ -237,7 +237,7 @@ class ActionTranslator(ABC):
     def __init__(self, target_env: ManiSkillEnv, ori_env):
         self.ori_env = ori_env
         self.target_env = target_env
-        self.ori_controller: CombinedController = ori_env.agent.controller
+        self.ori_controller: CombinedController = ori_env.unwrapped.agent.controller
         self.controller: CombinedController = target_env.agent.controller
 
         # NOTE(jigu): We need to track the end-effector pose in the original env,

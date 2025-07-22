@@ -647,7 +647,7 @@ def make_tensorclass(
 
     Class = type(name, bases, attr)
 
-    TensorClass = tensorclass(Class)
+    TensorClass = tensorclass(Class, shadow=True)
 
     for method_name, method in methods.items():
         setattr(TensorClass, method_name, method)

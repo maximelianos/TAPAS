@@ -10,8 +10,8 @@ config = Config(
     sequence_len=None,
     data_naming=data_naming_config,
     dataset_config=scene_dataset_config,
-    env=Environment.MANISKILL,
+    env_type=Environment.MANISKILL,
     env_config=maniskill_env_config,
-    policy=PolicyEnum.MANUAL,
+    policy_type=PolicyEnum.MANUAL,
     policy=None,
 )

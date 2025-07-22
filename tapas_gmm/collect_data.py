@@ -49,7 +49,7 @@ class Config:
 def main(config: Config) -> None:
     Env = import_env(config.env_config)
 
-    Policy = import_policy(config.policy.value)
+    Policy = import_policy(policy_name=config.policy_type.value)
 
     task_name = get_full_task_name(config)  # type: ignore
 

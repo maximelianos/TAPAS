@@ -39,15 +39,19 @@ class MotionPlanner:
         plan = {}
 
         if with_screw:
-            plan = self.planner.plan_screw(goal_pose, current_pose, time_step=time_step)
+            from mplib.pymp import Pose
+            plan = self.planner.plan_screw(Pose(goal_pose[:3], goal_pose[3:]), current_pose, time_step=time_step)
             success = self._check_success(plan)
 
             if not success:
                 logger.warning("Planning with screw failed. Trying again without.")
 
         if not with_screw or not success:
-            plan = self.planner.plan_qpos_to_pose(
-                goal_pose, current_pose, time_step=time_step
+            #plan = self.planner.plan_qpos_to_pose(
+            #    goal_pose, current_pose, time_step=time_step
+            #)
+            plan = self.planner.plan_qpos(
+                [goal_pose], current_pose, time_step=time_step
             )
             success = self._check_success(plan)
 

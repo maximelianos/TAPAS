@@ -460,6 +460,8 @@ class GMMPolicy(Policy):
             local_marginals=self._local_marginals,
         )
 
+        print('pred ', prediction.shape)
+
         if postprocess:
             action = self._postprocess_prediction(ee_pose, prediction)
         else:
@@ -546,6 +548,7 @@ class GMMPolicy(Policy):
         Convert to pose delta.
         Should skip this step in batch mode.
         """
+        print(prediction.shape, prediction)
         # Split gripper and EE part
         if self._model_contains_gripper_action:
             gripper_action = prediction[-1:]
@@ -562,6 +565,9 @@ class GMMPolicy(Policy):
         )
 
         # Split EE part into state and action if needed
+        
+        print(state_dim, action_dim)
+        print(self._model_is_txdx, self._time_based, self._model_contains_gripper_action)
         if self._model_is_txdx and self._time_based:
             # TXDX model, ie contains time, state and action. Can use either x or dx.
             assert ee_prediction.shape == (state_dim + action_dim,)
@@ -576,6 +582,7 @@ class GMMPolicy(Policy):
 
         else:
             ee_dim = action_dim if self._prediction_is_delta_pose else state_dim
+            #print(ee_prediction.shape, ee_dim)
             assert ee_prediction.shape == (ee_dim,)
 
         if self._prediction_is_delta_pose:

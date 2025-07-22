@@ -5,6 +5,7 @@ from tapas_gmm.env.mani_skill import ManiSkillEnvironmentConfig
 maniskill_env_config = ManiSkillEnvironmentConfig(
     task=MISSING,
     cameras=("wrist", "base"),
+    #cameras=("overhead_0", "overhead_1", "overhead_2"),
     camera_pose={},
     image_size=(256, 256),
     static=False,

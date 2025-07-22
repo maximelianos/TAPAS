@@ -26,6 +26,7 @@ from tapas_gmm.utils.observation import (
 )
 
 ACTION_MODE = "pd_ee_delta_pose"
+#ACTION_MODE = "base_pd_joint_vel_arm_pd_joint_delta_pos_vel"
 OBS_MODE = "state_dict+image"
 
 
@@ -181,14 +182,14 @@ class ManiSkillEnv(BaseEnvironment):
 
     @property
     def agent(self):
-        return self.gym_env.agent
+        return self.gym_env.unwrapped.agent
 
     @property
     def robot(self):
         return self.agent.robot
 
     def get_solution_sequence(self):
-        return self.gym_env.env.get_solution_sequence()
+        return self.gym_env.env.unwrapped.get_solution_sequence()
 
     def _patch_register_cameras(self):
         from mani_skill2.sensors.camera import CameraConfig
@@ -296,7 +297,7 @@ class ManiSkillEnv(BaseEnvironment):
             if self.render_sapien:
                 self.gym_env.render_human()
             else:
-                obs = self.gym_env.render_cameras()
+                obs = self.gym_env.unwrapped.render_cameras()
                 cv2.imshow(self.cam_win_title, obs)
                 cv2.waitKey(1)
 
@@ -317,7 +318,7 @@ class ManiSkillEnv(BaseEnvironment):
         return self.reset(seed=seed, options=reset_kwargs)
 
     def get_seed(self):
-        return self.gym_env.get_episode_seed()
+        return self.gym_env.unwrapped.get_episode_seed()
 
     def get_state(self):
         return self.gym_env.get_state()
@@ -461,6 +462,7 @@ class ManiSkillEnv(BaseEnvironment):
         }
 
         ee_pose = torch.Tensor(obs["extra"]["tcp_pose"])
+        # ee_pose = torch.Tensor(obs["extra"].get("left_tcp_pose", torch.zeros((7, ))))
         object_poses = dict_to_tensordict(
             {
                 k: torch.Tensor(v)
