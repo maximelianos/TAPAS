@@ -205,6 +205,7 @@ class ManiSkillEnv(BaseEnvironment):
             mani_skill2.envs.pick_and_place.stack_cube.StackCubeEnv,
             mani_skill2.envs.pick_and_place.pick_single.PickSingleEGADEnv,
             mani_skill2.envs.pick_and_place.pick_single.PickSingleYCBEnv,
+            mani_skill2.envs.misc.lift_bucket.LiftBucketEnv,
             # mani_skill2.envs.assembly.assembling_kits.AssemblingKitsEnv,
             # TODO: for some reason, these two break upon patching
             # mani_skill2.envs.assembly.peg_insertion_side.PegInsertionSideEnv,

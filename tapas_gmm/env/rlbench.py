@@ -52,7 +52,9 @@ from rlbench.tasks import (
 from tapas_gmm.env import Environment
 from tapas_gmm.env.environment import BaseEnvironment, BaseEnvironmentConfig
 from tapas_gmm.utils.geometry_np import (
+    axis_angle_to_quaternion,
     conjugate_quat,
+    euler_angles_to_axis_angle,
     homogenous_transform_from_rot_shift,
     invert_homogenous_transform,
     quat_real_first_to_real_last,
@@ -71,6 +73,7 @@ from tapas_gmm.utils.observation import (
     dict_to_tensordict,
     empty_batchsize,
 )
+from tapas_gmm.utils.robot_trajectory import RobotTrajectory, TrajectoryPoint
 
 os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = os.environ["COPPELIASIM_ROOT"]
 
@@ -350,8 +353,86 @@ class RLBenchEnvironment(BaseEnvironment):
         RuntimeError
             If raised by the environment.
         """
+        # NOTE: hacked together. TODO: clean up
+        if type(action) is RobotTrajectory:
+            if len(action) == 0:
+                return None, 0, True, {}
+
+            obs_stack = []
+            for a in action:
+                next_obs, reward, done, info = self._step_single_action(
+                    a,
+                    postprocess=postprocess,
+                    delay_gripper=delay_gripper,
+                    scale_action=scale_action,
+                )
+                obs_stack.append(next_obs)
+
+                if done:
+                    break
+
+            info["obs_stack"] = obs_stack
+        else:
+            next_obs, reward, done, info = self._step_single_action(
+                action,
+                postprocess=postprocess,
+                delay_gripper=delay_gripper,
+                scale_action=scale_action,
+            )
+
+        # obs = None if next_obs is None else self.process_observation(next_obs)
+        obs = next_obs
+
+        return obs, reward, done, info
+    
+    def _step_single_action(
+        self,
+        action: np.ndarray,
+        postprocess: bool = True,
+        delay_gripper: bool = True,
+        scale_action: bool = True,
+    ) -> tuple[SceneObservation, float, bool, dict]:
+        # if type(action) is TrajectoryPoint:
+        #     if action.ee is not None:
+        #         # assert action.eed is None
+        #         # assert self.config.absolute_action_mode   TODO: Deal with this
+        #         action = np.concatenate((action.ee, np.array([action.gripper])))
+        #     else:
+
+        if type(action) is TrajectoryPoint:
+            if action.q is not None and self.config.action_mode:
+                action = np.concatenate((action.q, action.gripper))
+                postprocess = False
+            elif self.config.action_mode:
+                logger.info("Did not get joint position. Skipping.")
+                return None, 0, True, {}
+            elif action.ee is not None:
+                assert action.eed is None
+                assert self.config.absolute_action_mode
+                # NOTE: putting the rot in here is somewhat hacky
+                ee_pose = action.ee
+                prediction_has_rot = ee_pose.shape[0] > 4
+                if not prediction_has_rot:
+                    current_rot = self.get_ee_pose()[3:]
+                    ee_pose = np.concatenate((ee_pose, current_rot))
+                action = np.concatenate((ee_pose, action.gripper))
+            elif action.eed is not None:
+                assert action.ee is None
+                assert not self.config.absolute_action_mode
+                action = np.concatenate((action.eed, action.gripper))
+            else:
+                raise ValueError
+            ignore_collisions = None
+        else:
+            assert action.shape[0] == 9  # Only for ARP
+            ignore_collisions = action[-1]
+            action = action[:-1]
+
         prediction_is_quat = action.shape[0] == 8
 
+        # TODO: the whole postprocessing style is out-of-data and
+        # cumbersome. Update it to consume a TrajectoryPoint and clean
+        # up the args.
         if postprocess:
             action_delayed = self.postprocess_action(
                 action,
@@ -364,15 +445,21 @@ class RLBenchEnvironment(BaseEnvironment):
 
         # NOTE: Quaternion in RLBench is real-last.
         gripper = 0.0 if np.isnan(action_delayed[-1]) else action_delayed[-1]
-        zero_action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, gripper]
+
+        zero_action = self.get_noop_action(ee_pose=self.get_ee_pose(), gripper=gripper)
 
         if np.isnan(action_delayed).any():
             logger.warning("NaN action, skipping")
             action_delayed = zero_action
 
-        # action_delayed[:3] *= 0.05
+        # logger.info(f"Action {action_delayed}")
 
-        logger.info(f"Action {action_delayed}")
+        # TODO: REMOVE DEBUG
+        # action_delayed[-1] = 1.0
+        # action_delayed[2] = np.clip(action_delayed[2], 0.752, 2.0)
+
+        if not type(action) is TrajectoryPoint and ignore_collisions is not None:
+            action_delayed = np.concatenate([action_delayed, [ignore_collisions]])
 
         try:
             with np.errstate(invalid="raise"):
@@ -382,6 +469,7 @@ class RLBenchEnvironment(BaseEnvironment):
             InvalidActionError,
             FloatingPointError,
             ConfigurationPathError,
+            # KeyboardInterrupt
         ):
             logger.info("Skipping invalid action {}.".format(action_delayed))
 
@@ -394,7 +482,9 @@ class RLBenchEnvironment(BaseEnvironment):
                 FloatingPointError,
                 ConfigurationPathError,
             ):
-                logger.info("Can't execute noop either. Just haning in there...")
+                logger.info(
+                    f"Can't execute noop {zero_action} either. Canceling episode."
+                )
                 next_obs, reward, done = None, 0, True
         except RuntimeError as e:
             logger.error(f"Error in stepping action: {action_delayed}")
@@ -406,6 +496,75 @@ class RLBenchEnvironment(BaseEnvironment):
         info = {}
 
         return obs, reward, done, info
+    
+    def postprocess_action(
+        self,
+        action: np.ndarray,
+        prediction_is_quat: bool = True,
+        prediction_is_euler: bool = False,
+        scale_action: bool = False,
+        delay_gripper: bool = False,
+        trans_scale: float | None = None,
+        rot_scale: float | None = None,
+    ) -> np.ndarray:
+        """
+        Postprocess the action predicted by the policy for the action space of
+        the environment.
+
+        Parameters
+        ----------
+        action : np.ndarray[(7,), np.float32]
+            Original action predicted by the policy
+            Concatenation of delta_position, delta rotation, gripper action.
+            Delta rotation can be axis angle (NN) or Quaternion (GMM).
+        scale_action : bool, optional
+            Whether to scale the position and rotation action, by default False
+        delay_gripper : bool, optional
+            Whether to delay the gripper, by default False
+        trans_scale : float | None, optional
+            The scaling for the translation action,
+            by default self._delta_pos_scale
+        rot_scale : float | None, optional
+            The scaling for the rotation (applied to the Euler angles),
+            by default self._delta_angle_scale
+
+        Returns
+        -------
+        np.ndarray
+            _description_
+        """
+        if trans_scale is None:
+            trans_scale = self._delta_pos_scale
+        if rot_scale is None:
+            rot_scale = self._delta_angle_scale
+
+        rot_dim = 4 if prediction_is_quat else 3
+
+        delta_position, delta_rot, gripper = np.split(action, [3, 3 + rot_dim])
+
+        if prediction_is_quat:
+            delta_rot_axis_angle = quaternion_to_axis_angle(delta_rot)
+        elif prediction_is_euler:
+            delta_rot_axis_angle = euler_angles_to_axis_angle(delta_rot)
+        else:
+            delta_rot_axis_angle = delta_rot
+
+        # print(prediction_is_quat, prediction_is_euler, delta_rot_axis_angle)
+
+        if scale_action:
+            delta_position = delta_position * trans_scale
+            delta_rot_axis_angle = delta_rot_axis_angle * rot_scale
+
+        # print("scaled", delta_position, delta_rot_axis_angle)
+
+        delta_rot_quat = axis_angle_to_quaternion(delta_rot_axis_angle)
+
+        delta_rot_env = self.postprocess_quat_action(delta_rot_quat)
+
+        if delay_gripper:
+            gripper = [self.delay_gripper(gripper)]
+
+        return np.concatenate((delta_position, delta_rot_env, gripper))
 
     def get_camera_pose(self) -> dict[str, np.ndarray]:
         return {name: cam.get_pose() for name, cam in self.camera_map.items()}

@@ -225,7 +225,7 @@ class GMMPolicy(Policy):
                 prediction = self._prediction_batch.step()
                 info["done"] = False
             action = (
-                self._postprocess_prediction(obs.ee_pose.numpy(), prediction.ee)
+                self._postprocess_prediction(obs.ee_pose.numpy(), np.concatenate([prediction.ee, prediction.gripper]))
                 if self.config.postprocess_prediction
                 else prediction
             )
@@ -242,7 +242,8 @@ class GMMPolicy(Policy):
             info["done"] = False
 
         if self.config.binary_gripper_action:
-            action[-1] = self._binary_gripper_action(action[-1])
+            action.gripper = self._binary_gripper_action(action.gripper)
+            #action[-1:] = self._binary_gripper_action(action[-1:])
 
         return action, info
 
@@ -460,7 +461,7 @@ class GMMPolicy(Policy):
             local_marginals=self._local_marginals,
         )
 
-        print('pred ', prediction.shape)
+        # print('pred ', prediction.shape)
 
         if postprocess:
             action = self._postprocess_prediction(ee_pose, prediction)
