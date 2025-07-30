@@ -123,8 +123,10 @@ class RLBenchEnvironmentConfig(BaseEnvironmentConfig):
 
     # RLBench changed. AMs are no longer Enum and Omega can't store classes as vals
     planning_action_mode: bool = False
-    absolute_action_mode: bool = False
+    absolute_action_mode: bool = True
     action_frame: str = "end effector"
+    
+    joint_pos_action_mode: bool = False
 
     postprocess_actions: bool = True
     background: str | None = None
@@ -400,14 +402,13 @@ class RLBenchEnvironment(BaseEnvironment):
         #     else:
 
         if type(action) is TrajectoryPoint:
-            if action.q is not None and self.config.action_mode:
+            if action.q is not None and self.config.joint_pos_action_mode:
                 action = np.concatenate((action.q, action.gripper))
                 postprocess = False
-            elif self.config.action_mode:
+            elif self.config.joint_pos_action_mode:
                 logger.info("Did not get joint position. Skipping.")
                 return None, 0, True, {}
             elif action.ee is not None:
-                assert action.eed is None
                 assert self.config.absolute_action_mode
                 # NOTE: putting the rot in here is somewhat hacky
                 ee_pose = action.ee
@@ -424,6 +425,7 @@ class RLBenchEnvironment(BaseEnvironment):
                 raise ValueError
             ignore_collisions = None
         else:
+            print("shape ", action.shape)
             assert action.shape[0] == 9  # Only for ARP
             ignore_collisions = action[-1]
             action = action[:-1]
@@ -446,7 +448,8 @@ class RLBenchEnvironment(BaseEnvironment):
         # NOTE: Quaternion in RLBench is real-last.
         gripper = 0.0 if np.isnan(action_delayed[-1]) else action_delayed[-1]
 
-        zero_action = self.get_noop_action(ee_pose=self.get_ee_pose(), gripper=gripper)
+        # zero_action = self.get_noop_action(ee_pose=self.get_ee_pose(), gripper=gripper)
+        zero_action = np.zeros(8)
 
         if np.isnan(action_delayed).any():
             logger.warning("NaN action, skipping")

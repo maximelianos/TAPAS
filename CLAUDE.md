@@ -36,7 +36,7 @@ TAPAS is a research codebase for "The Art of Imitation: Learning Long-Horizon Ma
 
 ### Environment Setup
 ```bash
-# Install dependencies
+# Install dependencies (Python 3.10+ required)
 pip install -r requirements.txt
 pip install -e .
 
@@ -46,6 +46,12 @@ source rlbench_mode.sh
 # Install riepybdlib for Riemannian geometry
 git clone git@github.com:vonHartz/riepybdlib.git
 cd riepybdlib && pip install -e .
+
+# Install environment-specific extras
+pip install -e .[rlbench]     # For RLBench
+pip install -e .[maniskill]   # For ManiSkill2
+pip install -e .[franka]      # For Franka robot
+pip install -e .[diffusion]   # For Diffusion Policy
 ```
 
 ### Data Collection
@@ -55,6 +61,12 @@ tapas-collect --config conf/collect_data/rlbench_expert.py -t TaskName
 
 # Collect with multiprocessing
 tapas-collect --config conf/collect_data/maniskill_mp.py -t TaskName
+
+# Collect RLBench demonstrations
+tapas-collect-rlbench --config conf/collect_data/rlbench_expert.py -t TaskName
+
+# Collect Franka robot demonstrations
+tapas-collect --config conf/collect_data/franka.py -t TaskName
 ```
 
 ### Training and Evaluation
@@ -62,11 +74,21 @@ tapas-collect --config conf/collect_data/maniskill_mp.py -t TaskName
 # Encode trajectories with keypoints
 tapas-kp-encode --config conf/kp_encode_trajectories/vit/base.py -t TaskName -f demos
 
+# Embed trajectories (alternative encoding method)
+tapas-embed --config conf/embed_trajectories/vit/base.py -t TaskName -f demos
+
 # Train behavior cloning policy
 tapas-bc --config conf/behavior_cloning/keypoints/default.py -t TaskName
 
+# Train diffusion policy
+tapas-bc --config conf/behavior_cloning/diffusion/default.py -t TaskName
+
 # Evaluate policy
 tapas-eval --config conf/evaluate/gmm/test_auto_tgrip_rlbench.py -t TaskName -f demos
+
+# Evaluate with custom overrides
+tapas-eval --config conf/evaluate/gmm/test.py -t TaskName -f demos \
+  --overwrite wandb_mode=disabled policy.suffix=tx
 ```
 
 ### Pretrain Encoders
@@ -150,6 +172,18 @@ tapas-eval --config conf/evaluate/gmm/test.py -t StackCups -f demos
 - `notebooks/franka/`: Real robot validation notebooks
 - Use notebooks to visualize learned policies and debug issues
 
+## CLI Tools and Entry Points
+
+All command-line tools are available after installation:
+
+- `tapas-bc`: Behavior cloning training
+- `tapas-collect`: Data collection from environments  
+- `tapas-collect-rlbench`: Specialized RLBench data collection
+- `tapas-embed`: Trajectory embedding
+- `tapas-eval`: Policy evaluation
+- `tapas-kp-encode`: Keypoint encoding of trajectories
+- `tapas-pretrain`: Encoder pretraining
+
 ## Common Issues and Solutions
 
 ### CUDA/GPU Issues
@@ -161,11 +195,13 @@ tapas-eval --config conf/evaluate/gmm/test.py -t StackCups -f demos
 - RLBench requires specific Coppelia Sim setup - use `rlbench_mode.sh`
 - ManiSkill2 requires specific GPU drivers for rendering
 - Franka requires specific hardware setup
+- Python 3.10+ is required due to new syntax elements
 
 ### Configuration Errors
 - Verify `conf/_machine.py` has correct paths for your machine
 - Check that all required dependencies are installed for chosen environment
 - Use `--overwrite` to debug configuration issues
+- Install appropriate extras packages for your environment
 
 ## Research Extensions
 

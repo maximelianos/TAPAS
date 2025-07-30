@@ -25,7 +25,7 @@ from tapas_gmm.utils.keyboard_observer import (
 from tapas_gmm.utils.misc import DataNamingConfig, policy_checkpoint_name
 from tapas_gmm.utils.observation import SceneObservation, random_obs_dropout
 from tapas_gmm.utils.random import configure_seeds
-from tapas_gmm.utils.robot_trajectory import RobotTrajectory
+from tapas_gmm.utils.robot_trajectory import RobotTrajectory, TrajectoryPoint
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.utils.tasks import get_task_horizon
 from tapas_gmm.viz.live_keypoint import LiveKeypoints
@@ -241,7 +241,10 @@ def process_step(
         else (
             action[-1].gripper
             if isinstance(action, RobotTrajectory)
+            else (
+                action.gripper if isinstance(action, TrajectoryPoint)
             else torch.Tensor(action[-1, None]).to(device)
+            )
         )
     )
 

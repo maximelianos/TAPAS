@@ -242,8 +242,10 @@ class GMMPolicy(Policy):
             info["done"] = False
 
         if self.config.binary_gripper_action:
-            action.gripper = self._binary_gripper_action(action.gripper)
-            #action[-1:] = self._binary_gripper_action(action[-1:])
+            # action.gripper = self._binary_gripper_action(action.gripper)
+            action[-1:] = self._binary_gripper_action(action[-1:])
+            
+        action = TrajectoryPoint(ee=action[:-1], gripper=action[-1:])
 
         return action, info
 
