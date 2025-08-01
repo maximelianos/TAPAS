@@ -455,7 +455,9 @@ slides/videos/
 src/_machine_config.py
 
 # tmp folder for plotting etc
+.idea/
 src/_tmp/
 demos
 checkpoints
 img/
+maniskill_repo

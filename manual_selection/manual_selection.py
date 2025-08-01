@@ -29,11 +29,37 @@ def pixel_to_3d(u, v, depth_map, K):
     Y = (v - cy) * Z / fy
     return np.array([X, Y, Z])
 
+def pt3d_to_pixel(x: float, y: float, z: float, K: np.ndarray):
+    """ 
+    Project a 3D point (x, y, z) in camera space to 2D point -
+    multiply by intrinsic in homogenous coordinates.
+    
+    Arguments:
+        x, y, z: float coordinates
+        K: (3, 3), intrinsic matrix
+    Returns:
+        (u, v)
+    """
+    M = np.zeros((3, 4))
+    M[:3, :3] = K
+    
+    p3d = np.ones((4))
+    p3d[:3] = [x, y, z]
+    
+    p2d = M @ p3d # (3, 4) x (4, 1)
+    p2d = p2d / p2d[2] # homogenous component
+    
+    u, v = p2d[:2]
+    return np.array([u, v])
+
 # ======= Mouse callback =======
 def click_event(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         pt3d = pixel_to_3d(x, y, depth_map, K)
         if pt3d is not None:
+            X, Y, Z = pt3d
+            pt2d_check = pt3d_to_pixel(X, Y, Z, K)
+            assert np.allclose(np.array([x, y]), pt2d_check)
             print(f"Clicked: (u={x}, v={y}) → 3D: {pt3d}")
             cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
             cv2.imshow("Click to get 3D point", image)
