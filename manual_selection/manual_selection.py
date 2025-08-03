@@ -12,6 +12,9 @@ K = np.array( [
 image = cv2.imread("color.png")  # RGB image
 depth_map = cv2.imread("depth.png", cv2.IMREAD_UNCHANGED).astype(np.float32) * 0.001  # mm to meters
 
+max_depth = float(depth_map.max())
+cv2.imwrite("depth-view.png", (depth_map/max_depth*65536.0*0.8).astype(np.uint16)) # mm to meters
+
 if image is None or depth_map is None:
     raise RuntimeError("Failed to load image or depth map.")
 
@@ -55,6 +58,7 @@ def pt3d_to_pixel(x: float, y: float, z: float, K: np.ndarray):
 # ======= Mouse callback =======
 def click_event(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
+        print(depth_map[y, x])
         pt3d = pixel_to_3d(x, y, depth_map, K)
         if pt3d is not None:
             X, Y, Z = pt3d
