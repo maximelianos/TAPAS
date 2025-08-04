@@ -65,7 +65,7 @@ def main():
     save_dir.mkdir(exist_ok=True)
     annotations = []
 
-    for n_episode in range(10):
+    for n_episode in range(2):
         # Compute the camera pose by specifying forward(x), left(y) and up(z)
         
         # === random position with polar representation: x = r cos a, y = r sin a
@@ -183,9 +183,9 @@ def main():
     # label0_image = camera.get_visual_segmentation()
     # label1_image = camera.get_actor_segmentation()
     label0_pil = Image.fromarray(color_palette[label0_image])
-    label0_pil.save('label0.png')
+    #label0_pil.save('label0.png')
     label1_pil = Image.fromarray(color_palette[label1_image])
-    label1_pil.save('label1.png')
+    #label1_pil.save('label1.png')
 
     # ---------------------------------------------------------------------------- #
     # Take picture from the viewer
