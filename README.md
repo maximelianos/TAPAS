@@ -42,6 +42,9 @@ pip install torch pillow numpy torchvision matplotlib tensordict pandas loguru o
 
 Clone TAPAS additionally into `attempt_five`.
 
+replace attempt_five/TAPAS/tapas_gmm/encoder/keypoints.py with keypoints.py which is provided in https://github.com/maximelianos/TAPAS
+(specifically, encode(self, batch: SceneObservation) function differs between two files.
+
 Install grounding DINO.
 
 ```
