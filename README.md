@@ -73,8 +73,8 @@ Go to `attempt_five` directory.
 
 To run functo:
 * Move the image which you desire to obtain keypoints to test_data/observe_test_rgb and name it as 00000.jpg.
-* In the attempt_five/run_functo_pipeline file, change "test_target_label": "bucket" to whatever the object you want to use.
-* In the attempt_five/run_functo_pipeline file, in row 120, change text_prompts=["bucket handle", "bucket"] accordingly.
+* In the attempt_five/ extract_functo_keypoints.py file, in line 107, change "test_target_label": "bucket" to whatever the object you want to use.
+* In the attempt_five/func_point_transfer.py, in line 120, change text_prompts=["bucket handle", "bucket"] accordingly.
 * For example, if you want to get spout of a kettle and handle of a kettle, please use "kettle spout", "kettle handle"
-* Adjust box names in line 125 and 128 accordingly. Like "kettle spout", "kettle handle".
+* In the attempt_five/func_point_transfer.py, adjust box names in line 125 and 128 accordingly. Like "kettle spout", "kettle handle".
 * Change directory to my_models and use python test_tapas_keypoints.py
